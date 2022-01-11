@@ -6,12 +6,12 @@ cabal-version: 1.12
 
 name:           minesweeper
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/minesweeper#readme>
-homepage:       https://github.com/githubuser/minesweeper#readme
-bug-reports:    https://github.com/githubuser/minesweeper/issues
-author:         Author name here
+description:    Please see the README on GitHub at <https://github.com/MollyCK/minesweeper#readme>
+homepage:       https://github.com/MollyCK/minesweeper#readme
+bug-reports:    https://github.com/MollyCK/minesweeper/issues
+author:         MollyCK
 maintainer:     example@example.com
-copyright:      2022 Author name here
+copyright:      2022 MollyCK
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,11 +21,12 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/minesweeper
+  location: https://github.com/MollyCK/minesweeper
 
 library
   exposed-modules:
       Lib
+      MinesweeperGame
   other-modules:
       Paths_minesweeper
   hs-source-dirs:
