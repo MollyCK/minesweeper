@@ -81,8 +81,11 @@ emptyRow i n    | n > 0 = emptyRow i (n-2) ++ [Cell{state=Unknown, contents=Empt
                 | otherwise = []
 
 -- construct a minefield with mines (not an empty board)
-generateMinefield :: RandomGen g => g -> Board
-generateMinefield g = loadMines (emptyBoard bHeight bWidth) (generateMines bHeight bWidth quantMines g)
+generateMinefield :: Int -> Int -> IO Board
+generateMinefield height width = do
+    let board = emptyBoard height width
+    mineCoords <- generateMines height width quantMines
+    return $ loadMines board mineCoords
 
 -- load mines into their respective coordinates on the game board
 loadMines :: Board -> [XYCors] -> Board
@@ -90,19 +93,15 @@ loadMines _ [] = []
 loadMines board (xy : xys) = loadMines (setCellAt board xy cell) xys
     where cell = Cell{state=Unknown, contents=Mine, coords=xy}
 
--- NOT WORKING returns a list of coordinates for where mines are present on the board associated with random-generated number g
-generateMines :: RandomGen g => Int -> Int -> Int -> g -> [XYCors]      
-generateMines height width quantity g = []
-{-                                      do
-                                        x <- drawInt 0 height-1    -- keep an eye on this (getStdRandom) it's creating a new randomGenerator everytime so g is probably not used??
-                                        y <- drawInt 0 width-1     
-                                        remainder <- generateMines height width (quantity-1) g
-                                        (x,y):remainder                     -- cons the remainder onto the end of the x and y coordinates for this mine
--}
+-- Random Numbers and Mine Generation --
 
--- Inspired from http://zvon.org/other/haskell/Outputrandom/getStdRandom_f.html
-drawInt :: Int -> Int -> IO Int
-drawInt lo hi = getStdRandom (randomR (lo, hi))
+generateMines :: Int -> Int -> Int -> IO([XYCors])
+generateMines height width 0 = return []
+generateMines height width n = do
+                                x <- randomRIO (0, height-1)
+                                y <- randomRIO (0, width-1)
+                                remainder <- generateMines height width (n-1)
+                                return $ (x, y):remainder
 
 {- Cell Setters & Getters -}
 
