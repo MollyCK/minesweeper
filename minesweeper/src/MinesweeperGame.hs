@@ -1,7 +1,12 @@
 module MinesweeperGame ( 
     generateMinefield
     , getCellAt
-
+    , isGameComplete
+    , isEndGame
+    , revealCell
+    , flagCell
+    , questionCell
+    , toStringBoard
 )
 where
 
@@ -32,7 +37,29 @@ data Cell = Cell {
     , coords :: XYCors
 } deriving Eq
 
--- Game setup --
+{- Objects toString for Command Line -}
+
+toStringBoard :: Board -> String
+toStringBoard [] = ""
+toStringBoard (row:rows) = (toStringRow (row:rows) row) ++ "\n" ++ toStringBoard rows
+
+toStringRow :: Board -> [Cell] -> String
+toStringRow _ [] = ""
+toStringRow [] _ = ""
+toStringRow board (cell:cells) = case state cell of 
+                                Unknown -> '#':toStringRow board cells
+                                Flagged -> '!':toStringRow board cells
+                                Questioning -> '?':toStringRow board cells
+                                Visible -> (toStringCell board cell):(toStringRow board cells)
+
+toStringCell :: Board -> Cell -> Char
+toStringCell board cell0 = case contents cell0 of
+                            Mine -> '*'
+                            Empty -> case numAdjacentMines board cell0 of
+                                        0 -> ' '
+                                        n -> intToDigit n
+
+{- Game setup -}
 
 bHeight = 10    -- board height (currently no user input)
 bWidth = 10     -- board width (currently no user input)
@@ -111,8 +138,8 @@ revealCell board cell = setCell board cell Cell{state=Visible}
 flagCell :: Board -> Cell -> Board
 flagCell board cell = setCell board cell Cell{state=Flagged}
 
-questioningCell :: Board -> Cell -> Board
-questioningCell board cell = setCell board cell Cell{state=Questioning}
+questionCell :: Board -> Cell -> Board
+questionCell board cell = setCell board cell Cell{state=Questioning}
 
 hideCell :: Board -> Cell -> Board
 hideCell board cell = setCell board cell Cell{state=Unknown}
