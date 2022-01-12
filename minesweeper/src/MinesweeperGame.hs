@@ -172,7 +172,30 @@ forceReveal (row:rows) = last $ map (revealCell (row:rows)) toBeRevealed     -- 
 isPartOfABlankArea :: Board -> Cell -> Bool
 isPartOfABlankArea board cell = any (==0) (map (numAdjacentMines board) (getVisibleAdjacents board cell)) -- if any visible adjacent cell's are empty then return true
         
+{- Detecting Endgame Conditions -}
 
+-- returns true if the cell has a visible mine meaning the cell has caused endgame
+isEndCell :: Cell -> Bool
+isEndCell cell0 = isVisible cell0 && hasMine cell0
+
+-- returns true if there is a cell in the row with a visible mine meaning the row has caused endgame
+isEndRow :: [Cell] -> Bool
+isEndRow row = any isEndCell row
+
+-- returns true if the board has a visible mine causing endgame (searches row by row, cell by cell)
+isEndGame :: Board -> Bool
+isEndGame board = any isEndRow board
+
+{- Detecting Winning Conditions -}
+
+-- a row is complete (and therefore not the cause of endgame) if none of its cells are hidden and empty (mineless)
+isRowComplete :: [Cell] -> Bool
+isRowComplete row | filter (\cell0 -> (not $ hasMine cell0) && (not $ isVisible cell0)) row == [] = True
+            -- get a list of all the hidden empty cells in a row, if that list is empty then the row is complete
+
+-- a game is complete (and therefore won) if all its rows are complete
+isGameComplete :: Board -> Bool
+isGameComplete board = all isRowComplete board
 
 -- Utility functions --
 
