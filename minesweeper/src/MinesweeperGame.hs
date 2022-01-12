@@ -19,7 +19,7 @@ type Board = [[Cell]] -- the minefield (game board) is implemented as a 2D space
 data VisState = Visible            -- the visual state of a cell to the user
                 | Unknown 
                 | Flagged 
-                | Potential
+                | Questioning
                 deriving Eq
             
 data Contents = Mine            -- the contents of a cell
@@ -77,7 +77,9 @@ generateMines height width quantity g = []
 drawInt :: Int -> Int -> IO Int
 drawInt lo hi = getStdRandom (randomR (lo, hi))
 
--- Cell Setters & Getters --
+{- Cell Setters & Getters -}
+
+    -- Points & Coordinates --
 
 -- update cell at coordinates of currentCell to be newCell
 setCell :: Board -> Cell -> Cell -> Board
@@ -101,6 +103,43 @@ getCellAt :: Board -> XYCors -> Maybe Cell
 getCellAt board (x, y)  | isValidPoint board (x, y) = Just $ board !! x !! y    -- if it's a valid point for the given board then get the Cell at board[i][j]
                         | otherwise = Nothing       -- else return nothing
 
+    -- States --
+        -- Setters --
+revealCell :: Board -> Cell -> Board
+revealCell board cell = setCell board cell Cell{state=Visible}
+
+flagCell :: Board -> Cell -> Board
+flagCell board cell = setCell board cell Cell{state=Flagged}
+
+questioningCell :: Board -> Cell -> Board
+questioningCell board cell = setCell board cell Cell{state=Questioning}
+
+hideCell :: Board -> Cell -> Board
+hideCell board cell = setCell board cell Cell{state=Unknown}
+
+        -- Getters --
+isVisible :: Cell -> Bool
+isVisible Cell{state=Visible} = True
+isVisible _ = False
+
+isUnknown :: Cell -> Bool
+isUnknown Cell{state=Unknown} = True
+isUnknown _ = False
+
+isFlagged :: Cell -> Bool
+isFlagged Cell{state=Flagged} = True
+isFlagged _ = False
+
+isQuestioning :: Cell -> Bool
+isQuestioning Cell{state=Questioning} = True
+isQuestioning _ = False
+
+hasMine :: Cell -> Bool
+hasMine Cell{contents=Mine} = True
+hasMine _ = False
+
+    -- Mines & Adjacents --
+
 -- returns a list of all the cells with mines on the boards
 getAllMines :: Board -> [Cell]
 getAllMines [] = []
@@ -110,9 +149,30 @@ getAllMines (row:rows) = (filter hasMine row) ++ (getAllMines rows)        -- ta
 getAdjacents :: Board -> Cell -> [Cell]
 getAdjacents (row:rows) cell0 = (filter (isAdjacent cell0) row) ++ (getAdjacents rows cell0)         -- take only the cells that are adjacent to cell0 from the first row and concatenate with the recursion on the tail
 
+getVisibleAdjacents :: Board -> Cell -> [Cell]
+getVisibleAdjacents board cell0 =  filter isVisible (getAdjacents board cell0)
+
 -- returns the number of mines that cell0 has adjacent to it
 numAdjacentMines :: Board -> Cell -> Int
 numAdjacentMines board cell0 = length $ filter (isAdjacent cell0)(getAllMines board)  -- we want the cardinal number of the intersection of the set of all mines and the set of adjacent cells to cell0
+
+{- Blank Areas -}
+
+revealBlankArea :: Board -> Cell -> Board
+revealBlankArea board cell = reveal $ revealCell board cell
+
+reveal :: Board -> Board
+reveal board    | board == forceReveal board = board
+                | otherwise = forceReveal board
+
+forceReveal :: Board -> Board
+forceReveal (row:rows) = last $ map (revealCell (row:rows)) toBeRevealed     -- using last to force the evaluation so that the cells are revealed in real time
+                        where toBeRevealed = concat $ (filter (isPartOfABlankArea (row:rows)) row) : (forceReveal rows)
+
+isPartOfABlankArea :: Board -> Cell -> Bool
+isPartOfABlankArea board cell = any (==0) (map (numAdjacentMines board) (getVisibleAdjacents board cell)) -- if any visible adjacent cell's are empty then return true
+        
+
 
 -- Utility functions --
 
@@ -129,22 +189,3 @@ isAdjacent cell0 cell1  | (y0 == y1) && (abs(x0 - x1) == 1) || (x0 == x1) && (ab
 isValidPoint :: Board -> XYCors -> Bool
 isValidPoint board (x, y) = (x >= 0 && x < length board) && (y >= 0 && y < length board)
 
-isVisible :: Cell -> Bool
-isVisible Cell{state=Visible} = True
-isVisible _ = False
-
-isUnknown :: Cell -> Bool
-isUnknown Cell{state=Unknown} = True
-isUnknown _ = False
-
-isFlagged :: Cell -> Bool
-isFlagged Cell{state=Flagged} = True
-isFlagged _ = False
-
-isPotential :: Cell -> Bool
-isPotential Cell{state=Potential} = True
-isPotential _ = False
-
-hasMine :: Cell -> Bool
-hasMine Cell{contents=Mine} = True
-hasMine _ = False
