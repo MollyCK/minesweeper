@@ -28,6 +28,7 @@ library
       Lib
       Main
       MinesweeperGame
+      OMatic
   other-modules:
       Paths_minesweeper
   hs-source-dirs:
@@ -44,6 +45,7 @@ executable minesweeper-exe
   other-modules:
       Lib
       MinesweeperGame
+      OMatic
       Paths_minesweeper
   hs-source-dirs:
       src

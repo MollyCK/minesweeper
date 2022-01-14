@@ -11,10 +11,10 @@ botMove :: Board -> Board
 botMove board = case (filter (not . isFlagged) (getDefiniteMines board)) of    -- a list of unflagged definite Mines
                     (y:ys) -> flagCell board (coords y)
                     []     -> case (getAdjacentEmpties board (getDefiniteMines board)) of     -- there are no unflagged definite Mines so we can...
-                                (x:_) -> revealBlankArea board (coords x)               -- start revealing cells and see if that helps us in identifying some more definite Mines later on
-                                []    -> if not $ isGameComplete board                  
-                                            then revealBlankArea board (coords $ makeEducatedGuess board)
-                                         else board
+                                (x:_) -> revealBlankArea board (coords x)               -- start revealing cells adjacent to the definite mines that are definitely empty and see if that helps us in identifying some more definite Mines later on
+                                []    -> if not $ isGameComplete board                  -- if there are no definitely empty cells adjacent to the definitely mines and the game is not won yet...
+                                            then revealBlankArea board (coords $ makeEducatedGuess board)   -- start revealing cells by educated guesses based on probability of hitting a mine
+                                         else board         -- the game is won, return the completed board and let Main.hs be the messenger of good news 
 
 -- This is the last resort when we cannot identify any definites, we make an guess (educated on probability of hitting a mine : the bigger the number of adjacents' adjacents, the more likely to hit a mine)
 makeEducatedGuess :: Board -> Cell
