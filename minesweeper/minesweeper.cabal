@@ -26,6 +26,7 @@ source-repository head
 library
   exposed-modules:
       Lib
+      Main
       MinesweeperGame
   other-modules:
       Paths_minesweeper
@@ -33,18 +34,26 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , mtl
+    , random
+    , threepenny-gui
   default-language: Haskell2010
 
 executable minesweeper-exe
   main-is: Main.hs
   other-modules:
+      Lib
+      MinesweeperGame
       Paths_minesweeper
   hs-source-dirs:
-      app
+      src
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
     , minesweeper
+    , mtl
+    , random
+    , threepenny-gui
   default-language: Haskell2010
 
 test-suite minesweeper-test
@@ -58,4 +67,7 @@ test-suite minesweeper-test
   build-depends:
       base >=4.7 && <5
     , minesweeper
+    , mtl
+    , random
+    , threepenny-gui
   default-language: Haskell2010

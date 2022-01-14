@@ -1,14 +1,24 @@
-module MinesweeperGame ( 
-    generateMinefield
+{-# LANGUAGE FlexibleInstances #-}
+
+module MinesweeperGame( 
+    Board
+    , Cell (state, contents, coords)
+    , VisState (Visible, Unknown, Flagged, Questioning)
+    , generateBoard
     , getCellAt
+    , numAdjacentMines
+    , isAdjacent
+    , isFlagged
+    , isVisible
     , isGameComplete
     , isEndGame
     , revealCell
+    , revealBlankArea
     , flagCell
     , questionCell
-    , toStringBoard
-)
-where
+    , toStringCell
+) where
+
 
 import Data.Char
 import Data.List
@@ -25,17 +35,17 @@ data VisState = Visible            -- the visual state of a cell to the user
                 | Unknown 
                 | Flagged 
                 | Questioning
-                deriving Eq
+                deriving (Eq, Show)
             
 data Contents = Mine            -- the contents of a cell
                 | Empty 
-                deriving Eq
+                deriving (Eq, Show)
 
 data Cell = Cell {
       state :: VisState
     , contents :: Contents
     , coords :: XYCors
-} deriving Eq
+} deriving (Eq, Show)
 
 {- Objects toString for Command Line -}
 
@@ -50,14 +60,14 @@ toStringRow board (cell:cells) = case state cell of
                                 Unknown -> '#':toStringRow board cells
                                 Flagged -> '!':toStringRow board cells
                                 Questioning -> '?':toStringRow board cells
-                                Visible -> (toStringCell board cell):(toStringRow board cells)
+                                Visible -> (toStringCell board cell) ++ (toStringRow board cells)
 
-toStringCell :: Board -> Cell -> Char
+toStringCell :: Board -> Cell -> String
 toStringCell board cell0 = case contents cell0 of
-                            Mine -> '*'
+                            Mine -> "*"
                             Empty -> case numAdjacentMines board cell0 of
-                                        0 -> ' '
-                                        n -> intToDigit n
+                                        0 -> " "
+                                        n -> " " ++ [intToDigit n] ++ " "
 
 {- Game setup -}
 
@@ -72,24 +82,24 @@ boardInit = emptyBoard         -- create an empty board
 -- create an (empty) board of cells with Empty contents and Unkown state
 emptyBoard :: Int -> Int -> Board   
 emptyBoard height width
-        | height > 0 = emptyBoard (height - 2) width ++ [emptyRow (height-1) width]
+        | height > 0 = emptyBoard (height - 1) width ++ [emptyRow (height-1) width]
         | otherwise = []
 
 -- create an (empty) row of cells with Empty contents and Unkown state
 emptyRow :: Int -> Int -> [Cell]    
-emptyRow i n    | n > 0 = emptyRow i (n-2) ++ [Cell{state=Unknown, contents=Empty, coords=(i, n-1)}]
+emptyRow i n    | n > 0 = emptyRow i (n-1) ++ [Cell{state=Unknown, contents=Empty, coords=(i, n-1)}]
                 | otherwise = []
 
 -- construct a minefield with mines (not an empty board)
-generateMinefield :: Int -> Int -> IO Board
-generateMinefield height width = do
+generateBoard :: Int -> Int -> IO Board
+generateBoard height width = do
     let board = emptyBoard height width
     mineCoords <- generateMines height width quantMines
     return $ loadMines board mineCoords
 
 -- load mines into their respective coordinates on the game board
 loadMines :: Board -> [XYCors] -> Board
-loadMines _ [] = []
+loadMines board [] = board
 loadMines board (xy : xys) = loadMines (setCellAt board xy cell) xys
     where cell = Cell{state=Unknown, contents=Mine, coords=xy}
 
@@ -128,6 +138,9 @@ setCellRow (c:cs) newCell yCoord = c:(setCellRow cs newCell (yCoord-1))
 getCellAt :: Board -> XYCors -> Maybe Cell
 getCellAt board (x, y)  | isValidPoint board (x, y) = Just $ board !! x !! y    -- if it's a valid point for the given board then get the Cell at board[i][j]
                         | otherwise = Nothing       -- else return nothing
+
+unsafeGetCellAt :: Board -> XYCors -> Cell
+unsafeGetCellAt board (x, y) = board !! x !! y
 
     -- States --
         -- Setters --
@@ -192,8 +205,11 @@ reveal board    | board == forceReveal board = board
                 | otherwise = forceReveal board
 
 forceReveal :: Board -> Board
-forceReveal (row:rows) = last $ map (revealCell (row:rows)) toBeRevealed     -- using last to force the evaluation so that the cells are revealed in real time
-                        where toBeRevealed = concat $ (filter (isPartOfABlankArea (row:rows)) row) : (forceReveal rows)
+forceReveal board = clearCells board (filter (isPartOfABlankArea board) (concat board))
+
+clearCells :: Board -> [Cell] -> Board
+clearCells board [] = board
+clearCells board (cell:cells) = clearCells (revealCell board cell) cells
 
 isPartOfABlankArea :: Board -> Cell -> Bool
 isPartOfABlankArea board cell = any (==0) (map (numAdjacentMines board) (getVisibleAdjacents board cell)) -- if any visible adjacent cell's are empty then return true

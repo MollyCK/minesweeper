@@ -21,6 +21,9 @@ description:         Please see the README on GitHub at <https://github.com/Moll
 
 dependencies:
 - base >= 4.7 && < 5
+- random
+- threepenny-gui
+- mtl
 
 library:
   source-dirs: src
@@ -28,13 +31,16 @@ library:
 executables:
   minesweeper-exe:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
     - minesweeper
+    - random
+    - threepenny-gui
+    - mtl
 
 tests:
   minesweeper-test:
@@ -46,3 +52,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - minesweeper
+    - random
+    - threepenny-gui
+    - mtl
