@@ -5,8 +5,8 @@ module MinesweeperGame(
     , Cell (state, contents, coords)
     , VisState (Visible, Unknown, Flagged, Questioning)
     , generateBoard
-    , getCellAt
-    , numAdjacentMines
+    , unsafeGetCellAt
+    , numAdjMines
     , isAdjacent
     , isFlagged
     , isVisible
@@ -36,7 +36,7 @@ data VisState = Visible            -- the visual state of a cell to the user
                 | Flagged 
                 | Questioning
                 deriving (Eq, Show)
-            
+    
 data Contents = Mine            -- the contents of a cell
                 | Empty 
                 deriving (Eq, Show)
@@ -47,7 +47,7 @@ data Cell = Cell {
     , coords :: XYCors
 } deriving (Eq, Show)
 
-{- Objects toString for Command Line -}
+{- Objects toString designed with Command Line in mind-}
 
 toStringBoard :: Board -> String
 toStringBoard [] = ""
@@ -65,15 +65,15 @@ toStringRow board (cell:cells) = case state cell of
 toStringCell :: Board -> Cell -> String
 toStringCell board cell0 = case contents cell0 of
                             Mine -> "*"
-                            Empty -> case numAdjacentMines board cell0 of
+                            Empty -> case numAdjMines board cell0 of
                                         0 -> " "
                                         n -> " " ++ [intToDigit n] ++ " "
 
 {- Game setup -}
 
-bHeight = 10    -- board height (currently no user input)
-bWidth = 10     -- board width (currently no user input)
-quantMines = 20      -- total number of mines on board
+bHeight = 20    -- board height (currently no user input)
+bWidth = 20     -- board width (currently no user input)
+quantMines = 60      -- total number of mines on board
 
 -- initialise the board for the beginning of the game setup
 boardInit :: Int -> Int -> Board       
@@ -90,7 +90,7 @@ emptyRow :: Int -> Int -> [Cell]
 emptyRow i n    | n > 0 = emptyRow i (n-1) ++ [Cell{state=Unknown, contents=Empty, coords=(i, n-1)}]
                 | otherwise = []
 
--- construct a minefield with mines (not an empty board)
+-- construct a board with mines (not an empty board)
 generateBoard :: Int -> Int -> IO Board
 generateBoard height width = do
     let board = emptyBoard height width
@@ -144,19 +144,25 @@ unsafeGetCellAt board (x, y) = board !! x !! y
 
     -- States --
         -- Setters --
+
+-- Update the cell at xyCoords's state to be Visible and then reinsert to the board
 revealCell :: Board -> Cell -> Board
-revealCell board cell = setCell board cell Cell{state=Visible}
+revealCell board cell = setCell board cell cell{state=Visible} 
 
-flagCell :: Board -> Cell -> Board
-flagCell board cell = setCell board cell Cell{state=Flagged}
+-- Update the cell at xyCoords's state to be Flagged and then reinsert to the board
+flagCell :: Board -> XYCors -> Board
+flagCell board xyCoords = setCellAt board xyCoords (unsafeGetCellAt board xyCoords){state=Flagged}
 
-questionCell :: Board -> Cell -> Board
-questionCell board cell = setCell board cell Cell{state=Questioning}
+-- Update the cell at xyCoords's state to be Questioning and then reinsert to the board
+questionCell :: Board -> XYCors -> Board
+questionCell board xyCoords = setCellAt board xyCoords (unsafeGetCellAt board xyCoords){state=Questioning}
 
-hideCell :: Board -> Cell -> Board
-hideCell board cell = setCell board cell Cell{state=Unknown}
+-- Update the cell at xyCoords's state to be Unknown and then reinsert to the board
+hideCell :: Board -> XYCors -> Board
+hideCell board xyCoords = setCellAt board xyCoords (unsafeGetCellAt board xyCoords){state=Unknown}
 
         -- Getters --
+
 isVisible :: Cell -> Bool
 isVisible Cell{state=Visible} = True
 isVisible _ = False
@@ -186,23 +192,23 @@ getAllMines (row:rows) = (filter hasMine row) ++ (getAllMines rows)        -- ta
 
 -- returns a list of all the cells that are adjacent (horizontally, vertically, or diagonally) to cell0 
 getAdjacents :: Board -> Cell -> [Cell]
-getAdjacents (row:rows) cell0 = (filter (isAdjacent cell0) row) ++ (getAdjacents rows cell0)         -- take only the cells that are adjacent to cell0 from the first row and concatenate with the recursion on the tail
+getAdjacents board cell0 = filter (isAdjacent cell0) (concat board)         -- take only the cells that are adjacent to cell0 from the first row and concatenate with the recursion on the tail
 
 getVisibleAdjacents :: Board -> Cell -> [Cell]
 getVisibleAdjacents board cell0 =  filter isVisible (getAdjacents board cell0)
 
 -- returns the number of mines that cell0 has adjacent to it
-numAdjacentMines :: Board -> Cell -> Int
-numAdjacentMines board cell0 = length $ filter (isAdjacent cell0)(getAllMines board)  -- we want the cardinal number of the intersection of the set of all mines and the set of adjacent cells to cell0
+numAdjMines :: Board -> Cell -> Int
+numAdjMines board cell0 = length $ filter (isAdjacent cell0)(getAllMines board)  -- we want the cardinal number of the intersection of the set of all mines and the set of adjacent cells to cell0
 
 {- Blank Areas -}
 
-revealBlankArea :: Board -> Cell -> Board
-revealBlankArea board cell = reveal $ revealCell board cell
+revealBlankArea :: Board -> XYCors -> Board
+revealBlankArea board xyCoords = reveal $ revealCell board (unsafeGetCellAt board xyCoords)
 
 reveal :: Board -> Board
 reveal board    | board == forceReveal board = board
-                | otherwise = forceReveal board
+                | otherwise = reveal (forceReveal board)
 
 forceReveal :: Board -> Board
 forceReveal board = clearCells board (filter (isPartOfABlankArea board) (concat board))
@@ -212,7 +218,7 @@ clearCells board [] = board
 clearCells board (cell:cells) = clearCells (revealCell board cell) cells
 
 isPartOfABlankArea :: Board -> Cell -> Bool
-isPartOfABlankArea board cell = any (==0) (map (numAdjacentMines board) (getVisibleAdjacents board cell)) -- if any visible adjacent cell's are empty then return true
+isPartOfABlankArea board cell = any (==0) (map (numAdjMines board) (getVisibleAdjacents board cell)) -- if any visible adjacent cell's are empty then return true
         
 {- Detecting Endgame Conditions -}
 
@@ -222,22 +228,18 @@ isEndCell cell0 = isVisible cell0 && hasMine cell0
 
 -- returns true if there is a cell in the row with a visible mine meaning the row has caused endgame
 isEndRow :: [Cell] -> Bool
-isEndRow row = any isEndCell row
+isEndRow = any isEndCell
 
 -- returns true if the board has a visible mine causing endgame (searches row by row, cell by cell)
 isEndGame :: Board -> Bool
-isEndGame board = any isEndRow board
+isEndGame = any isEndRow
 
 {- Detecting Winning Conditions -}
 
 -- a row is complete (and therefore not the cause of endgame) if none of its cells are hidden and empty (mineless)
-isRowComplete :: [Cell] -> Bool
-isRowComplete row | filter (\cell0 -> (not $ hasMine cell0) && (not $ isVisible cell0)) row == [] = True
-            -- get a list of all the hidden empty cells in a row, if that list is empty then the row is complete
-
 -- a game is complete (and therefore won) if all its rows are complete
 isGameComplete :: Board -> Bool
-isGameComplete board = all isRowComplete board
+isGameComplete board = length (filter (\cell0 -> (not $ hasMine cell0) && (not $ isVisible cell0)) (concat board)) == 0
 
 -- Utility functions --
 
